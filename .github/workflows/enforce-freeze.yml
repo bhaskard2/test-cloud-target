@@ -12,13 +12,26 @@ jobs:
   check_frozen_folder:
     runs-on: ubuntu-latest
     steps:
+      # --- FIX 1: Checkout the Repository ---
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        # We need to fetch enough history for the 'push' event to compare the current commit vs. the previous one.
+        with:
+          fetch-depth: 2 
+          
+      # --- FIX 2: Simplify and Correct inputs for tj-actions/changed-files ---
       - name: Get Changed Files
         id: files
-        # A common action to identify changed files between two commits
         uses: tj-actions/changed-files@v44
         with:
-          # Determine the commit range for comparison
-          sha_range: ${{ github.event_name == 'push' && format('{0}~1..{0}', github.sha) || format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) }}
+          # Use the 'since_last_remote_commit' input for the push event to compare changes 
+          # Or simplify the inputs completely, as the default behavior is often sufficient 
+          # for standard push/PR events after checkout.
+          
+          # We'll use the default behavior for simplicity after checking out the code.
+          # The action will infer the comparison range from the event context.
+          
+          # Removed the complex and deprecated sha_range input.
           
       - name: Check for Modifications in Frozen Folder
         id: path_check
@@ -27,7 +40,10 @@ jobs:
           MODIFIED="false"
           
           # Check all changed files for matches within the frozen path
-          for file in ${{ steps.files.outputs.all_changed_files }}; do
+          # We now check both added, modified, and deleted files for safety
+          ALL_FILES="${{ steps.files.outputs.added_files }} ${{ steps.files.outputs.modified_files }} ${{ steps.files.outputs.deleted_files }}"
+          
+          for file in $ALL_FILES; do
             if [[ "$file" == $FROZEN_PATH* ]]; then
               echo "::error file=$file::Modification blocked: This folder is a read-only mirror and cannot be modified directly."
               MODIFIED="true"
@@ -37,7 +53,9 @@ jobs:
           echo "modification_detected=$MODIFIED" >> $GITHUB_OUTPUT
 
       - name: Fail if frozen folder was modified
+        # This step is dependent on the output from the previous step
         if: steps.path_check.outputs.modification_detected == 'true'
         run: |
           echo "❌ PUSH BLOCKED: Cannot commit changes to the 'cloud/scripts/' folder. This is an automated mirror."
+          # This command is what forces the workflow to fail, thus rejecting the push.
           exit 1
