@@ -1,0 +1,43 @@
+name: Enforce Scripts Freeze
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check_frozen_folder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get Changed Files
+        id: files
+        # A common action to identify changed files between two commits
+        uses: tj-actions/changed-files@v44
+        with:
+          # Determine the commit range for comparison
+          sha_range: ${{ github.event_name == 'push' && format('{0}~1..{0}', github.sha) || format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) }}
+          
+      - name: Check for Modifications in Frozen Folder
+        id: path_check
+        run: |
+          FROZEN_PATH="cloud/scripts/"
+          MODIFIED="false"
+          
+          # Check all changed files for matches within the frozen path
+          for file in ${{ steps.files.outputs.all_changed_files }}; do
+            if [[ "$file" == $FROZEN_PATH* ]]; then
+              echo "::error file=$file::Modification blocked: This folder is a read-only mirror and cannot be modified directly."
+              MODIFIED="true"
+            fi
+          done
+          
+          echo "modification_detected=$MODIFIED" >> $GITHUB_OUTPUT
+
+      - name: Fail if frozen folder was modified
+        if: steps.path_check.outputs.modification_detected == 'true'
+        run: |
+          echo "❌ PUSH BLOCKED: Cannot commit changes to the 'cloud/scripts/' folder. This is an automated mirror."
+          exit 1
