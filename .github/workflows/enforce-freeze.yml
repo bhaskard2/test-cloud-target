@@ -23,16 +23,7 @@ jobs:
       - name: Get Changed Files
         id: files
         uses: tj-actions/changed-files@v44
-        with:
-          # Use the 'since_last_remote_commit' input for the push event to compare changes 
-          # Or simplify the inputs completely, as the default behavior is often sufficient 
-          # for standard push/PR events after checkout.
-          
-          # We'll use the default behavior for simplicity after checking out the code.
-          # The action will infer the comparison range from the event context.
-          
-          # Removed the complex and deprecated sha_range input.
-          
+
       - name: Check for Modifications in Frozen Folder
         id: path_check
         run: |
