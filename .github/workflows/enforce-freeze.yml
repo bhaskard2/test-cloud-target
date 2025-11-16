@@ -50,5 +50,5 @@ jobs:
       - name: Fail if frozen folder was modified
         if: steps.path_check.outputs.modification_detected == 'true'
         run: |
-          echo "❌ PUSH BLOCKED: Cannot commit changes to the 'cloud/scripts/' folder. This is an automated mirror."
+          echo "❌ PUSH BLOCKED: Cannot commit changes to the 'cloud/' folder. This is an automated mirror."
           exit 1
