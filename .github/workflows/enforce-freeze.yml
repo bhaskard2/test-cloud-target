@@ -25,7 +25,7 @@ jobs:
         id: path_check
         run: |
           # The exact path that MUST be protected
-          FROZEN_PATH="cloud/scripts/"
+          FROZEN_PATH="cloud/"
           MODIFIED="false"
           
           # Combine all files reported as added, modified, or deleted
