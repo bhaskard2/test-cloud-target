@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "${SCRIPT_DIR}"
+
+# Default values
+MODE="ut"
+PS_VERSION=""
+
+# Usage: run_sizing_scripts_tests [ut|e2e|all] [--ps-version X.Y.Z]
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    ut|UT|e2e|E2E|all|ALL)
+      MODE="$1"
+      shift
+      ;;
+    --ps-version|-p)
+      if [[ $# -lt 2 ]]; then
+        echo "Error: --ps-version requires an argument" >&2
+        echo "Usage: $0 [ut|e2e|all] [--ps-version X.Y.Z]" >&2
+        exit 1
+      fi
+      PS_VERSION="$2"
+      shift 2
+      ;;
+    *)
+      echo "Usage: $0 [ut|e2e|all] [--ps-version X.Y.Z]" >&2
+      exit 1
+      ;;
+  esac
+done
+
+MODE_UPPER="$(printf '%s' "${MODE}" | tr '[:lower:]' '[:upper:]')"
+TEST_SUITE="${MODE_UPPER}"
+
+# Ensure a host coverage directory exists so the container can write
+# ./coverage/coverage.xml into it via a bind mount.
+mkdir -p coverage
+
+if [[ -n "${PS_VERSION}" ]]; then
+  docker build \
+    --platform=linux/amd64 \
+    -f tests/Dockerfile \
+    -t sizing-tests \
+    --build-arg "POWERSHELL_VERSION=${PS_VERSION}" \
+    .
+else
+  docker build \
+    --platform=linux/amd64 \
+    -f tests/Dockerfile \
+    -t sizing-tests \
+    .
+fi
+
+docker run --rm \
+    --platform=linux/amd64 \
+    -e TEST_SUITE="${TEST_SUITE}" \
+    -v "${SCRIPT_DIR}/coverage:/sizing_tests/coverage" \
+    sizing-tests
